@@ -1,9 +1,12 @@
 package org.mihailovo.less_springsecuritybasic.config;
 
+import lombok.RequiredArgsConstructor;
 import org.mihailovo.less_springsecuritybasic.model.user.Role;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -13,11 +16,14 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true) //включает возможность в самом контроллере выбирать разрешение для конкретного метода
+@RequiredArgsConstructor
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
+    private final UserDetailsService userDetailsService;
 
                                  //Базовая АВТОРИЗАЦИЯ и АУТЕНТИФИКАЦИЯ НА ОСНОВЕ РОЛЕЙ
     /*@Override
@@ -113,4 +119,48 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                         .authorities(Role.LOSER.getAuthorities())
                         .build());
     }*/
+
+                                 // АУТЕНТИФИКАЦИЯ НА ОСНВЕ ДАННЫХ ИЗ ФОРМЫ
+
+
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http
+                .csrf().disable()
+                .authorizeHttpRequests()
+                .antMatchers("/").permitAll()
+                .anyRequest().authenticated()
+                .and()
+                //описываем кастомную страницу логина
+                .formLogin().loginPage("/auth/login").permitAll() // страничка которая будет возвращать контроллер
+                //описываем по какому маппингу сходить, если залогинились
+                .defaultSuccessUrl("/auth/profile")
+                .and()
+                .logout()
+                .logoutRequestMatcher(new AntPathRequestMatcher("/auth/logout", "POST"))
+                .invalidateHttpSession(true)
+                .deleteCookies("JSESSIONID")
+                .clearAuthentication(true)
+                .logoutSuccessUrl("/auth/login");
+    }
+
+    //добавляет кодирование пароля .password(encoder().encode("admin"))
+    @Bean
+    public PasswordEncoder encoder() {
+        return new BCryptPasswordEncoder(12);
+    }
+
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.authenticationProvider(provider());
+    }
+
+    @Bean
+    protected DaoAuthenticationProvider provider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setPasswordEncoder(encoder());
+        provider.setUserDetailsService(userDetailsService);
+        return provider;
+    }
+
 }

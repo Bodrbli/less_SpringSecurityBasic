@@ -1,7 +1,10 @@
 package org.mihailovo.less_springsecuritybasic.controller;
 
+
 import org.mihailovo.less_springsecuritybasic.model.Customer;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,6 +27,14 @@ public class MainController {
     @PreAuthorize("hasAuthority('CUSTOMER_READ')") // дает разрешение мотоду
     public List<Customer> all() {
         return CUSTOMERS;
+    }
+
+    // инвалидация сессии
+    // @GetMapping("/a")
+    // @PreAuthorize("permitAll()") // дает полное разрешение
+    public void a() {
+        SecurityContextHolder.getContext().setAuthentication(null); //SecurityContextHolder - объект(контейнер) позволяет смотреть что лежит в security context (сессия)
+
     }
 
     @PostMapping("/{id}")
